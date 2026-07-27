@@ -4,6 +4,7 @@ package com.ai.agent.controller;
 import com.ai.agent.auth.AuthService;
 import com.ai.agent.dto.*;
 import com.ai.agent.entity.User;
+import com.ai.agent.service.OtpService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -23,8 +24,11 @@ public class AuthController {
 
     private final AuthService authService;
 
-    public AuthController(AuthService authService) {
+    private final OtpService otpService;
+
+    public AuthController(AuthService authService, OtpService otpService) {
         this.authService = authService;
+        this.otpService = otpService;
     }
 
     @Operation(
@@ -84,6 +88,45 @@ public class AuthController {
                 ApiResponse.success(
                         "Logout successful",
                         "User logged out successfully",
+                        HttpStatus.OK.value()));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<String>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request) {
+
+         otpService.sendOtp(request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "OTP sent successfully",
+                        "Success",
+                        HttpStatus.OK.value()));
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<ApiResponse<String>> varifyOtp(
+            @Valid @RequestBody VerifyOtpRequest request) {
+
+        otpService.verifyOtp(request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "OTP verify successfully  ",
+                        "Success",
+                        HttpStatus.OK.value()));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<String>> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request) {
+
+        otpService.resetPassword(request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Password reset successfully  ",
+                        "Success",
                         HttpStatus.OK.value()));
     }
 }
