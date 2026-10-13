@@ -5,7 +5,6 @@ import com.api.auth_service.service.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -25,7 +24,7 @@ public class AuthController {
 
     @PostMapping("/verify-otp")
     public ResponseEntity<ApiResponse<String>> verify(@Valid @RequestBody VerifyOtpRequest r) {
-     otpService.verifyRegistrationOtp(r);
+        otpService.verifyRegistrationOtp(r);
         return ResponseEntity.ok(ApiResponse.success("OTP verified successfully", "Email verified", HttpStatus.OK.value()));
     }
 
@@ -41,19 +40,19 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<String>> logout(@Valid @RequestBody LogoutRequest r) {
-     authService.logout(r.getRefreshToken());
+        authService.logout(r.getRefreshToken());
         return ResponseEntity.ok(ApiResponse.success("Logout successful", "User logged out", HttpStatus.OK.value()));
     }
 
     @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse<String>> forgot(@Valid @RequestBody ForgotPasswordRequest r) {
-     otpService.sendOtp(r);
+        otpService.sendOtp(r);
         return ResponseEntity.ok(ApiResponse.success("OTP sent successfully", "Success", HttpStatus.OK.value()));
     }
 
     @PostMapping("/reset-password")
     public ResponseEntity<ApiResponse<String>> reset(@Valid @RequestBody ResetPasswordRequest r) {
-     otpService.resetPassword(r);
+        otpService.resetPassword(r);
         return ResponseEntity.ok(ApiResponse.success("Password reset successfully", "Success", HttpStatus.OK.value()));
     }
 }

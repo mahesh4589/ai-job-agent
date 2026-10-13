@@ -13,7 +13,6 @@ public class UserEventProducer {
     private static final String USER_TOPIC = "user-events";
 
     public void sendUserCreatedEvent(Object event) {
-
         kafkaTemplate.send(USER_TOPIC, event);
     }
 }
