@@ -3,9 +3,13 @@ package com.api.auth_service.service;
 import com.api.auth_service.entity.*;
 
 public interface RefreshTokenService {
-    RefreshToken create(User user);
+    String create(User user);
 
-    RefreshToken verify(String token);
+    RefreshTokenRotation rotate(String token);
 
     void revoke(String token);
+
+    void revokeAllForUser(User user);
+
+    record RefreshTokenRotation(User user, String token) { }
 }
