@@ -1,10 +1,14 @@
 package com.api.auth_service.service.impl;
 
+import com.api.auth_service.kafka.event.OtpRequestedEvent;
+import com.api.auth_service.kafka.producer.OtpEventProducer;
+
 import com.api.auth_service.dto.*;
 import com.api.auth_service.entity.User;
 import com.api.auth_service.repository.UserRepository;
 import com.api.auth_service.service.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -12,15 +16,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OtpServiceImpl implements OtpService {
     private final StringRedisTemplate redis;
     private final UserRepository users;
     private final UserService userService;
-    private final EmailService emailService;
+    private final OtpEventProducer otpEventProducer;
     private final RefreshTokenService refreshTokenService;
     private final PasswordEncoder encoder;
     private final SecureRandom random = new SecureRandom();
@@ -58,6 +64,7 @@ public class OtpServiceImpl implements OtpService {
         u.setPassword(encoder.encode(r.getNewPassword()));
         users.save(u);
         refreshTokenService.revokeAllForUser(u);
+        log.info("Password reset completed and active sessions revoked userId={}", u.getId());
     }
 
     private void send(String email, String purpose) {
@@ -73,14 +80,13 @@ public class OtpServiceImpl implements OtpService {
         redis.opsForValue().set(otpKey, hash, TTL);
         redis.delete(attemptKey(purpose, email));
         try {
-            emailService.sendSimpleMail(email,
-                    purpose.equals("REGISTRATION")
-                            ? "AI Job Agent - Verify your email"
-                            : "AI Job Agent - Password reset OTP",
-                    "Your OTP is: " + otp + "\n\nIt expires in 5 minutes.");
+            otpEventProducer.publish(
+                    OtpRequestedEvent.of(email, purpose, otp, Instant.now().plus(TTL)));
+            log.info("OTP request published purpose={}", purpose);
         } catch (RuntimeException exception) {
             redis.delete(otpKey);
             redis.delete(resendKey);
+            log.error("OTP event publishing failed; temporary OTP state cleared purpose={} errorType={}", purpose, exception.getClass().getSimpleName());
             throw exception;
         }
     }
@@ -130,3 +136,4 @@ public class OtpServiceImpl implements OtpService {
         return email.trim().toLowerCase(Locale.ROOT);
     }
 }
+

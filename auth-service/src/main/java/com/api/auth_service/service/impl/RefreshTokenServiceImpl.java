@@ -5,6 +5,7 @@ import com.api.auth_service.entity.User;
 import com.api.auth_service.repository.RefreshTokenRepository;
 import com.api.auth_service.service.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,7 @@ import java.util.Base64;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class RefreshTokenServiceImpl implements RefreshTokenService {
 
     private static final int TOKEN_BYTES = 32;
@@ -39,6 +41,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         refreshToken.setExpiryDate(Instant.now().plus(ttlDays, ChronoUnit.DAYS));
         refreshToken.setRevoked(false);
         repository.save(refreshToken);
+        log.debug("Refresh token created userId={} expiresAt={}", user.getId(), refreshToken.getExpiryDate());
         return rawToken;
     }
 
@@ -46,9 +49,13 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     @Transactional
     public RefreshTokenRotation rotate(String rawToken) {
         RefreshToken current = repository.findByTokenForUpdate(digest(rawToken))
-                .orElseThrow(() -> new IllegalArgumentException("Invalid refresh token"));
+                .orElseThrow(() -> {
+                    log.warn("Refresh rejected: token is not recognized");
+                    return new IllegalArgumentException("Invalid refresh token");
+                });
 
         if (current.isRevoked() || !current.getExpiryDate().isAfter(Instant.now())) {
+            log.warn("Refresh rejected: token is expired or revoked userId={}", current.getUser().getId());
             throw new IllegalArgumentException("Refresh token expired or revoked");
         }
 
@@ -57,6 +64,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
 
         User user = current.getUser();
         String replacement = create(user);
+        log.info("Refresh token rotated userId={}", user.getId());
         return new RefreshTokenRotation(user, replacement);
     }
 
@@ -66,13 +74,15 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         repository.findByTokenForUpdate(digest(rawToken)).ifPresent(token -> {
             token.setRevoked(true);
             repository.save(token);
+            log.info("Refresh token revoked for logout userId={}", token.getUser().getId());
         });
     }
 
     @Override
     @Transactional
     public void revokeAllForUser(User user) {
-        repository.revokeAllByUserId(user.getId());
+        int revokedCount = repository.revokeAllByUserId(user.getId());
+        log.info("Revoked refresh tokens after credential reset userId={} count={}", user.getId(), revokedCount);
     }
 
     private String newRawToken() {
