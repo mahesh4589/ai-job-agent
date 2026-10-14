@@ -22,7 +22,7 @@ Java 21 + Spring Boot 4.1.1 + Spring Cloud 2025.1.2 authentication microservice.
 - Eureka: `localhost:8761`
 - Config Server: `localhost:8888`
 
-Copy `config-example/auth-service.yaml` to the Config Server Git repository as `auth-service.yaml`.
+The Config Server reads `auth-service.yaml` from the `ai-job-agent-config` repository submodule. Its database password and JWT signing key are resolved from the Auth Service process environment. For local setup instructions and PowerShell examples, see `../ai-job-agent-config/README.md`. Do not commit secret values; the Config Server cannot read variables that exist only in the Config Server process, so set them in the Auth Service process or its IDE run configuration.
 
 ## APIs
 - `POST /api/v1/auth/register`
